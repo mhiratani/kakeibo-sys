@@ -31,9 +31,15 @@ services:
       DB_NAME: household_budget
       DB_USER: budget_user
       DB_PASSWORD: budget_pass
+      OIDC_ISSUER: ${OIDC_ISSUER}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
+      SESSION_SECRET: ${SESSION_SECRET}
+      NODE_ENV: ${NODE_ENV:-production}
     volumes:
       - ./csv_files:/app/csv_files
-    restart: always 
+    restart: always
 
 volumes:
   postgres_data:

@@ -1,12 +1,15 @@
+require('dotenv').config();
 const express = require('express');
+const session = require('express-session');
 const { Pool } = require('pg');
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const auth = require('./auth');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // csv_files ディレクトリが存在しない場合は作成
 const uploadDir = 'csv_files';
@@ -24,6 +27,18 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'budget_pass',
 });
 
+// セッション設定
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'kakeibo-sys-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS環境でのみtrue
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24時間
+  }
+}));
+
 // ミドルウェア
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -32,8 +47,76 @@ app.use(express.static('public'));
 // CSVアップロード設定
 const upload = multer({ dest: 'csv_files/' });
 
+// 認証エンドポイント
+app.get('/auth/login', (req, res) => {
+  try {
+    const authUrl = auth.generateAuthUrl(req);
+    res.redirect(authUrl);
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).send('認証エラーが発生しました');
+  }
+});
+
+app.get('/auth/callback', async (req, res) => {
+  try {
+    const user = await auth.handleCallback(req);
+    console.log('User logged in:', user.name);
+    res.redirect('/');
+  } catch (error) {
+    console.error('Callback error:', error);
+    const content = `
+      <div class="alert alert-error">
+        <h3>❌ 認証エラー</h3>
+        <p>${error.message}</p>
+      </div>
+      <button onclick="location.href='/auth/login'" class="btn-primary">再ログイン</button>
+    `;
+    res.send(getHTMLTemplate(content));
+  }
+});
+
+app.get('/auth/logout', async (req, res) => {
+  try {
+    await auth.handleLogout(req);
+    const content = `
+      <div class="alert alert-success">
+        <h3>✅ ログアウト完了</h3>
+        <p>ログアウトしました。</p>
+      </div>
+      <button onclick="location.href='/auth/login'" class="btn-primary">ログイン</button>
+    `;
+    res.send(getHTMLTemplate(content));
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.redirect('/');
+  }
+});
+
+app.get('/auth/userinfo', auth.requireAuth, (req, res) => {
+  const user = auth.getUser(req);
+  const content = `
+    <h2>👤 ユーザー情報</h2>
+    <div class="settlement">
+      <p><strong>名前:</strong> ${user.name}</p>
+      <p><strong>メールアドレス:</strong> ${user.email || 'N/A'}</p>
+      <p><strong>ユーザーID:</strong> ${user.sub}</p>
+    </div>
+    <button onclick="location.href='/'" class="btn-primary">ホームに戻る</button>
+  `;
+  res.send(getHTMLTemplate(content));
+});
+
 // HTMLテンプレート（レスポンシブ対応）
-const getHTMLTemplate = (content) => {
+const getHTMLTemplate = (content, user = null) => {
+  const userNav = user ? `
+    <div class="user-nav">
+      <span class="user-info">👤 ${user.name}</span>
+      <button onclick="location.href='/auth/userinfo'" class="btn-info" style="width: auto; padding: 8px 16px; margin: 0 5px;">ユーザー情報</button>
+      <button onclick="location.href='/auth/logout'" class="btn-secondary" style="width: auto; padding: 8px 16px; margin: 0;">ログアウト</button>
+    </div>
+  ` : '';
+  
   return `
 <!DOCTYPE html>
 <html lang="ja">
@@ -374,6 +457,25 @@ const getHTMLTemplate = (content) => {
             gap: 8px;
         }
 
+        /* ユーザーナビゲーション */
+        .user-nav {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            border-radius: 10px;
+            flex-wrap: wrap;
+        }
+
+        .user-info {
+            font-weight: 600;
+            color: #4a5568;
+            margin-right: auto;
+        }
+
         /* ユーティリティクラス */
         .text-center {
             text-align: center;
@@ -688,6 +790,7 @@ const getHTMLTemplate = (content) => {
 <body>
     <div class="container">
         <h1>📊 出費サマリーApp</h1>
+        ${userNav}
         ${content}
     </div>
 </body>
@@ -696,7 +799,8 @@ const getHTMLTemplate = (content) => {
 };
 
 // メインページ
-app.get('/', (req, res) => {
+app.get('/', auth.requireAuth, (req, res) => {
+  const user = auth.getUser(req);
   const content = `
     <div class="form-section">
       <h2>📁 CSVファイル読み込み</h2>
@@ -714,7 +818,7 @@ app.get('/', (req, res) => {
       <button onclick="location.href='/available-months'" class="btn-success">サマリー一覧を表示</button>
     </div>
   `;
-  res.send(getHTMLTemplate(content));
+  res.send(getHTMLTemplate(content, user));
 });
 
 // CSVファイルをパースしてDBに保存
@@ -825,7 +929,8 @@ async function parseAndSaveCSV(filePath) {
 }
 
 // CSVアップロード処理
-app.post('/upload', upload.single('csvFile'), async (req, res) => {
+app.post('/upload', auth.requireAuth, upload.single('csvFile'), async (req, res) => {
+  const user = auth.getUser(req);
   try {
     if (!req.file) {
       throw new Error('ファイルが選択されていません');
@@ -865,7 +970,7 @@ app.post('/upload', upload.single('csvFile'), async (req, res) => {
       `;
     }
     
-    res.send(getHTMLTemplate(content));
+    res.send(getHTMLTemplate(content, user));
   } catch (error) {
     const content = `
       <div class="alert alert-error">
@@ -874,12 +979,13 @@ app.post('/upload', upload.single('csvFile'), async (req, res) => {
       </div>
       <button onclick="location.href='/'" class="btn-primary">戻る</button>
     `;
-    res.send(getHTMLTemplate(content));
+    res.send(getHTMLTemplate(content, user));
   }
 });
 
 // 月次サマリー表示
-app.get('/summary', async (req, res) => {
+app.get('/summary', auth.requireAuth, async (req, res) => {
+  const user = auth.getUser(req);
   try {
     const { yearMonth } = req.query;
     
@@ -1111,7 +1217,7 @@ app.get('/summary', async (req, res) => {
       </div>
     `;
 
-    res.send(getHTMLTemplate(content));
+    res.send(getHTMLTemplate(content, user));
   } catch (error) {
     const content = `
       <div class="alert alert-error">
@@ -1120,12 +1226,13 @@ app.get('/summary', async (req, res) => {
       </div>
       <button onclick="location.href='/available-months'" class="btn-primary">サマリー一覧に戻る</button>
     `;
-    res.send(getHTMLTemplate(content));
+    res.send(getHTMLTemplate(content, user));
   }
 });
 
 // サマリー一覧（旧：利用可能な月一覧）
-app.get('/available-months', async (req, res) => {
+app.get('/available-months', auth.requireAuth, async (req, res) => {
+  const user = auth.getUser(req);
   try {
     const client = await pool.connect();
     const result = await client.query(`
@@ -1171,7 +1278,7 @@ app.get('/available-months', async (req, res) => {
 
     content += '<div class="btn-container"><button onclick="location.href=\'/\'" class="btn-primary">ホームに戻る</button></div>';
 
-    res.send(getHTMLTemplate(content));
+    res.send(getHTMLTemplate(content, user));
   } catch (error) {
     const content = `
       <div class="alert alert-error">
@@ -1180,14 +1287,28 @@ app.get('/available-months', async (req, res) => {
       </div>
       <button onclick="location.href='/'" class="btn-primary">ホームに戻る</button>
     `;
-    res.send(getHTMLTemplate(content));
+    res.send(getHTMLTemplate(content, user));
   }
 });
 
 // サーバー起動
-app.listen(port, () => {
-  console.log(`家計簿管理システムが起動しました: http://localhost:${port}`);
-});
+async function startServer() {
+  try {
+    // OIDC クライアントの初期化
+    await auth.initializeOIDC();
+    console.log('OIDC authentication configured');
+    
+    // サーバー起動
+    app.listen(port, () => {
+      console.log(`家計簿管理システムが起動しました: http://localhost:${port}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 // データベース接続テスト
 pool.connect((err, client, release) => {
