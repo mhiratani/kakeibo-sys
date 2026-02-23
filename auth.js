@@ -75,7 +75,6 @@ function generateAuthUrl(req) {
         console.error('Session save error:', err);
         reject(new Error('セッション保存に失敗しました'));
       } else {
-        console.log('Session saved successfully with state:', state);
         resolve(authUrl);
       }
     });
@@ -88,14 +87,6 @@ function generateAuthUrl(req) {
 async function handleCallback(req) {
   const client = getClient();
   const params = client.callbackParams(req);
-  
-  // デバッグログ
-  console.log('=== Callback Debug ===');
-  console.log('Received state from OIDC:', params.state);
-  console.log('Session state:', req.session.state);
-  console.log('Session ID:', req.sessionID);
-  console.log('Session data:', JSON.stringify(req.session, null, 2));
-  console.log('=====================');
   
   // stateの検証
   if (params.state !== req.session.state) {
