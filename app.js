@@ -22,22 +22,23 @@ if (!fs.existsSync(uploadDir)) {
 
 // PostgreSQL接続設定
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'household_budget',
-  user: process.env.DB_USER || 'budget_user',
-  password: process.env.DB_PASSWORD || 'budget_pass',
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
 });
 
 // セッション設定
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'kakeibo-sys-secret-key',
+  secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // OIDC認証フローのために true に変更
   cookie: {
     secure: process.env.NODE_ENV === 'production', // HTTPS環境でのみtrue
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24時間
+    sameSite: 'lax', // CSRF対策
   }
 }));
 
