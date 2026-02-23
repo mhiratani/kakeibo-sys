@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
 const csv = require('csv-parser');
 const fs = require('fs');
@@ -29,8 +30,14 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
-// セッション設定
+// セッション設定（PostgreSQLストア使用）
 app.use(session({
+  store: new pgSession({
+    pool: pool,                   // 既存のPostgreSQLプール
+    tableName: 'session',         // セッションテーブル名
+    createTableIfMissing: false,  // init.sqlで作成済み
+    pruneSessionInterval: 60 * 60 // 1時間ごとに期限切れセッションを削除
+  }),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: true, // OIDC認証フローのために true に変更
@@ -51,9 +58,9 @@ app.use(express.static('public'));
 const upload = multer({ dest: 'csv_files/' });
 
 // 認証エンドポイント
-app.get('/auth/login', (req, res) => {
+app.get('/auth/login', async (req, res) => {
   try {
-    const authUrl = auth.generateAuthUrl(req);
+    const authUrl = await auth.generateAuthUrl(req);
     res.redirect(authUrl);
   } catch (error) {
     console.error('Login error:', error);

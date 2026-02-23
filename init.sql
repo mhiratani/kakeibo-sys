@@ -18,3 +18,13 @@ CREATE INDEX IF NOT EXISTS idx_household_records_year_month ON household_records
 CREATE INDEX IF NOT EXISTS idx_household_records_category ON household_records (category);
 CREATE INDEX IF NOT EXISTS idx_household_records_person ON household_records (person);
 CREATE INDEX IF NOT EXISTS idx_household_records_date ON household_records (record_date);
+
+-- セッションテーブルの作成（connect-pg-simple用）
+CREATE TABLE IF NOT EXISTS "session" (
+  "sid" varchar NOT NULL COLLATE "default",
+  "sess" json NOT NULL,
+  "expire" timestamp(6) NOT NULL,
+  CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+);
+
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");

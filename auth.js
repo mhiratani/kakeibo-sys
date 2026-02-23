@@ -68,7 +68,18 @@ function generateAuthUrl(req) {
     state,
   });
 
-  return authUrl;
+  // セッションを明示的に保存してからリダイレクト
+  return new Promise((resolve, reject) => {
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        reject(new Error('セッション保存に失敗しました'));
+      } else {
+        console.log('Session saved successfully with state:', state);
+        resolve(authUrl);
+      }
+    });
+  });
 }
 
 /**
