@@ -130,19 +130,61 @@ async function checkBackupHealth() {
       };
     }
 
-    // NAS APIへの接続テスト（オプショナル）
-    const healthUrl = process.env.BACKUP_NAS_API_URL.replace('/upload', '/health');
-    const response = await axios.get(healthUrl, {
-      timeout: 5000,
-      headers: {
-        'Authorization': `Bearer ${process.env.BACKUP_NAS_API_TOKEN || ''}`,
-      },
-    }).catch(() => null);
+    // NAS APIへの接続テスト
+    // URLからオリジン（プロトコル+ホスト+ポート）を抽出
+    try {
+      const apiUrl = new URL(process.env.BACKUP_NAS_API_URL);
+      const healthUrl = `${apiUrl.origin}/health`;
+      
+      const response = await axios.get(healthUrl, {
+        timeout: 5000,
+        headers: {
+          'Authorization': `Bearer ${process.env.BACKUP_NAS_API_TOKEN || ''}`,
+        },
+      });
 
-    return {
-      status: response ? 'ok' : 'warning',
-      message: response ? 'NAS API is reachable' : 'NAS API health check failed (may not be critical)',
-    };
+      if (response.status === 200 && response.data) {
+        const service = response.data.service || 'NAS Backup Server';
+        return {
+          status: 'ok',
+          message: `${service} is reachable and healthy`,
+        };
+      } else {
+        return {
+          status: 'warning',
+          message: `NAS API returned unexpected response: ${response.status}`,
+        };
+      }
+    } catch (error) {
+      // ネットワークエラーの場合
+      if (error.code === 'ECONNREFUSED') {
+        return {
+          status: 'error',
+          message: 'NAS API connection refused (server may be offline)',
+        };
+      } else if (error.code === 'ENOTFOUND') {
+        return {
+          status: 'error',
+          message: 'NAS API host not found (check URL configuration)',
+        };
+      } else if (error.code === 'ETIMEDOUT') {
+        return {
+          status: 'warning',
+          message: 'NAS API health check timed out',
+        };
+      } else if (error.response) {
+        // HTTPエラーレスポンス
+        return {
+          status: 'warning',
+          message: `NAS API health check failed: ${error.response.status}`,
+        };
+      } else {
+        return {
+          status: 'warning',
+          message: `Health check error: ${error.message}`,
+        };
+      }
+    }
   } catch (error) {
     return {
       status: 'warning',
