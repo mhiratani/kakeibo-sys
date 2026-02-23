@@ -2,6 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# PostgreSQLクライアントツールをインストール（pg_dumpに必要）
+RUN apk add --no-cache postgresql-client
+
 # パッケージファイルをコピー
 COPY package*.json ./
 

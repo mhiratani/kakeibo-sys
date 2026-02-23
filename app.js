@@ -6,7 +6,9 @@ const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const cron = require('node-cron');
 const auth = require('./auth');
+const backup = require('./backup');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -817,6 +819,11 @@ app.get('/', auth.requireAuth, (req, res) => {
       <h2>📋 サマリー一覧</h2>
       <button onclick="location.href='/available-months'" class="btn-success">サマリー一覧を表示</button>
     </div>
+
+    <div class="form-section">
+      <h2>💾 バックアップ管理</h2>
+      <button onclick="location.href='/backup/status'" class="btn-info">バックアップ設定・実行</button>
+    </div>
   `;
   res.send(getHTMLTemplate(content, user));
 });
@@ -1291,12 +1298,104 @@ app.get('/available-months', auth.requireAuth, async (req, res) => {
   }
 });
 
+// バックアップエンドポイント（手動バックアップ）
+app.post('/backup/manual', auth.requireAuth, async (req, res) => {
+  const user = auth.getUser(req);
+  try {
+    console.log(`Manual backup triggered by user: ${user.name}`);
+    const result = await backup.performBackup();
+    
+    const content = `
+      <div class="alert alert-success">
+        <h3>✅ バックアップ成功</h3>
+        <p>データベースのバックアップが正常に完了しました。</p>
+        <p><strong>ファイル名:</strong> ${result.fileName}</p>
+        <p><strong>保存先:</strong> NAS (${process.env.BACKUP_NAS_API_URL || 'Not configured'})</p>
+      </div>
+      <button onclick="location.href='/'" class="btn-primary">ホームに戻る</button>
+    `;
+    res.send(getHTMLTemplate(content, user));
+  } catch (error) {
+    console.error('Manual backup failed:', error);
+    const content = `
+      <div class="alert alert-error">
+        <h3>❌ バックアップ失敗</h3>
+        <p>${error.message}</p>
+        <p>ログを確認してください。NAS APIの設定が正しいか確認してください。</p>
+      </div>
+      <button onclick="location.href='/'" class="btn-primary">ホームに戻る</button>
+    `;
+    res.send(getHTMLTemplate(content, user));
+  }
+});
+
+// バックアップ状態確認エンドポイント
+app.get('/backup/status', auth.requireAuth, async (req, res) => {
+  const user = auth.getUser(req);
+  try {
+    const health = await backup.checkBackupHealth();
+    
+    const statusIcon = health.status === 'ok' ? '✅' : health.status === 'warning' ? '⚠️' : '❌';
+    const statusClass = health.status === 'ok' ? 'alert-success' : 'alert-error';
+    
+    const content = `
+      <h2>💾 バックアップ設定状況</h2>
+      <div class="${statusClass}">
+        <h3>${statusIcon} ステータス: ${health.status.toUpperCase()}</h3>
+        <p>${health.message}</p>
+      </div>
+      
+      <div class="settlement">
+        <h3>📋 設定情報</h3>
+        <p><strong>NAS API URL:</strong> ${process.env.BACKUP_NAS_API_URL || '未設定'}</p>
+        <p><strong>スケジュール:</strong> ${process.env.BACKUP_SCHEDULE || '0 3 * * 0 (毎週日曜日 午前3時)'}</p>
+        <p><strong>認証トークン:</strong> ${process.env.BACKUP_NAS_API_TOKEN ? '設定済み' : '未設定'}</p>
+      </div>
+
+      <div class="btn-container">
+        <button onclick="if(confirm('データベースのバックアップを実行しますか？')) { document.getElementById('manualBackupForm').submit(); }" class="btn-success">手動バックアップ実行</button>
+        <button onclick="location.href='/'" class="btn-secondary">ホームに戻る</button>
+      </div>
+
+      <form id="manualBackupForm" action="/backup/manual" method="POST" style="display: none;"></form>
+    `;
+    res.send(getHTMLTemplate(content, user));
+  } catch (error) {
+    const content = `
+      <div class="alert alert-error">
+        <h3>❌ エラー</h3>
+        <p>${error.message}</p>
+      </div>
+      <button onclick="location.href='/'" class="btn-primary">戻る</button>
+    `;
+    res.send(getHTMLTemplate(content, user));
+  }
+});
+
 // サーバー起動
 async function startServer() {
   try {
     // OIDC クライアントの初期化
     await auth.initializeOIDC();
     console.log('OIDC authentication configured');
+    
+    // バックアップスケジューラーの設定
+    const backupSchedule = process.env.BACKUP_SCHEDULE || '0 3 * * 0'; // デフォルト: 毎週日曜日午前3時
+    console.log(`Backup schedule: ${backupSchedule}`);
+    
+    cron.schedule(backupSchedule, async () => {
+      console.log(`[${new Date().toISOString()}] Scheduled backup started`);
+      try {
+        const result = await backup.performBackup();
+        console.log(`[${new Date().toISOString()}] Scheduled backup completed: ${result.fileName}`);
+      } catch (error) {
+        console.error(`[${new Date().toISOString()}] Scheduled backup failed:`, error);
+      }
+    }, {
+      timezone: "Asia/Tokyo"
+    });
+    
+    console.log('Backup scheduler configured');
     
     // サーバー起動
     app.listen(port, () => {

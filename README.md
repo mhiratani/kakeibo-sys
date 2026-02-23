@@ -8,6 +8,7 @@ PostgreSQL + Node.js + Express を使った家計簿データ管理システム�
 - 月次サマリー表示（カテゴリ別・人別支出）
 - 清算計算（一人当たり負担額と過不足分算出）
 - サマリー一覧表示
+- 自動/手動データベースバックアップ（NAS保存対応）
 
 ## セットアップ
 
@@ -158,6 +159,70 @@ environment:
   POSTGRES_USER: your_username
   POSTGRES_PASSWORD: your_password
 ```
+
+## データベースバックアップ機能
+
+### 概要
+
+本システムは定期的な自動バックアップと手動バックアップの両方に対応しています。バックアップファイルはNAS上のLinux APIサーバーに送信されます。
+
+### バックアップの設定
+
+`.env`ファイルに以下の設定を追加してください：
+
+```env
+# NAS APIのエンドポイントURL
+BACKUP_NAS_API_URL=http://192.168.1.100:5000/api/backup/upload
+
+# NAS API認証トークン
+BACKUP_NAS_API_TOKEN=your_secure_token_here
+
+# バックアップスケジュール（cron形式）
+# デフォルト: 毎週日曜日午前3時
+BACKUP_SCHEDULE=0 3 * * 0
+```
+
+### バックアップスケジュール形式（cron）
+
+cron形式: `分 時 日 月 曜日`
+
+例：
+- `0 3 * * 0` - 毎週日曜日午前3時
+- `0 2 * * *` - 毎日午前2時
+- `0 3 * * 1` - 毎週月曜日午前3時
+- `0 4 1 * *` - 毎月1日午前4時
+
+### 手動バックアップの実行
+
+1. ブラウザでアプリケーションにログイン
+2. `/backup/status` にアクセス
+3. 「手動バックアップ実行」ボタンをクリック
+
+または、直接 `POST /backup/manual` を呼び出すことも可能です。
+
+### バックアップファイル形式
+
+- ファイル名: `household_budget_backup_YYYY-MM-DDTHH-MM-SS.sql`
+- 形式: PostgreSQL SQLダンプファイル
+- 内容: 全テーブルデータとスキーマ
+
+### バックアップの復元
+
+バックアップファイルからデータを復元する場合：
+
+```bash
+# コンテナ内で実行
+docker compose exec db psql -U budget_user -d household_budget -f /path/to/backup.sql
+
+# またはホストから実行
+cat backup.sql | docker compose exec -T db psql -U budget_user -d household_budget
+```
+
+### トラブルシューティング
+
+**pg_dumpが見つからないエラー：**
+
+Dockerfileに `postgresql-client` がインストールされているか確認してください。
 
 ## サポート
 

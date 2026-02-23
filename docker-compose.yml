@@ -37,6 +37,9 @@ services:
       OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
       SESSION_SECRET: ${SESSION_SECRET}
       NODE_ENV: ${NODE_ENV:-production}
+      BACKUP_NAS_API_URL: ${BACKUP_NAS_API_URL}
+      BACKUP_NAS_API_TOKEN: ${BACKUP_NAS_API_TOKEN}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 3 * * 0}
     volumes:
       - ./csv_files:/app/csv_files
     restart: always
