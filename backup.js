@@ -50,11 +50,11 @@ async function performBackup() {
  */
 function createDatabaseDump(outputPath) {
   return new Promise((resolve, reject) => {
-    const dbHost = process.env.DB_HOST || 'localhost';
-    const dbPort = process.env.DB_PORT || 5432;
-    const dbName = process.env.DB_NAME || 'household_budget';
-    const dbUser = process.env.DB_USER || 'budget_user';
-    const dbPassword = process.env.DB_PASSWORD || 'budget_pass';
+    const dbHost = process.env.DB_HOST;
+    const dbPort = process.env.DB_PORT;
+    const dbName = process.env.DB_NAME;
+    const dbUser = process.env.DB_USER;
+    const dbPassword = process.env.DB_PASSWORD;
 
     // pg_dumpコマンドを構築
     const command = `PGPASSWORD="${dbPassword}" pg_dump -h ${dbHost} -p ${dbPort} -U ${dbUser} -d ${dbName} -f ${outputPath}`;
