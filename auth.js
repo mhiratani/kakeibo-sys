@@ -89,6 +89,14 @@ async function handleCallback(req) {
   const client = getClient();
   const params = client.callbackParams(req);
   
+  // デバッグログ
+  console.log('=== Callback Debug ===');
+  console.log('Received state from OIDC:', params.state);
+  console.log('Session state:', req.session.state);
+  console.log('Session ID:', req.sessionID);
+  console.log('Session data:', JSON.stringify(req.session, null, 2));
+  console.log('=====================');
+  
   // stateの検証
   if (params.state !== req.session.state) {
     throw new Error('State mismatch - possible CSRF attack');

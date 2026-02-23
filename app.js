@@ -14,6 +14,9 @@ const backup = require('./backup');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// リバースプロキシを信頼する設定（HTTPS環境で必須）
+app.set('trust proxy', 1);
+
 // csv_files ディレクトリが存在しない場合は作成
 const uploadDir = 'csv_files';
 if (!fs.existsSync(uploadDir)) {
