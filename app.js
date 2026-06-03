@@ -81,7 +81,7 @@ app.get('/auth/callback', async (req, res) => {
     console.error('Callback error:', error);
     const content = `
       <div class="alert alert-error">
-        <h3>❌ 認証エラー</h3>
+        <h3> 認証エラー</h3>
         <p>${error.message}</p>
       </div>
       <button onclick="location.href='/auth/login'" class="btn-primary">再ログイン</button>
@@ -126,7 +126,7 @@ app.get('/', auth.requireAuth, (req, res) => {
   const user = auth.getUser(req);
   const content = `
     <div class="form-section">
-      <h2>📁 CSVファイル読み込み</h2>
+      <h2>🐱 CSVファイル読み込み</h2>
       <form action="/upload" method="post" enctype="multipart/form-data">
         <div class="form-group">
           <label for="csvFile">CSVファイルを選択:</label>
@@ -137,12 +137,12 @@ app.get('/', auth.requireAuth, (req, res) => {
     </div>
 
     <div class="form-section">
-      <h2>📋 サマリー一覧</h2>
-      <button onclick="location.href='/available-months'" class="btn-success">サマリー一覧を表示</button>
+      <h2>🐟️ サマリー一覧</h2>
+      <button onclick="location.href='/available-months'" class="btn-success">サマリー一覧を見る</button>
     </div>
 
     <div class="form-section">
-      <h2>💾 バックアップ管理</h2>
+      <h2>バックアップ管理</h2>
       <button onclick="location.href='/backup/status'" class="btn-info">バックアップ設定・実行</button>
     </div>
   `;
@@ -523,7 +523,7 @@ app.get('/summary', auth.requireAuth, async (req, res) => {
     }
 
     const content = `
-      <h2>📊 ${yearMonth} 月次サマリー</h2>
+      <h2>🌙 ${yearMonth} 月次サマリー</h2>
       
       <div class="settlement">
         <h3>💰 支出サマリー</h3>
@@ -532,10 +532,10 @@ app.get('/summary', auth.requireAuth, async (req, res) => {
         <p><strong>一人当たり:</strong> ¥${perPersonAmount.toLocaleString()}</p>
       </div>
 
-      <h3>👥 支払者別支出</h3>
+      <h3>👰 支払者別支出</h3>
       ${settlementTable}
 
-      <h3>📋 カテゴリ別詳細 <small>（行をクリックで詳細表示）</small></h3>
+      <h3>🐬 カテゴリ別詳細 <small>（行をクリックで詳細表示）</small></h3>
       ${categoryTable}
 
       <div class="btn-container">
@@ -581,7 +581,6 @@ app.get('/available-months', auth.requireAuth, async (req, res) => {
               <tr>
                 <th>年月</th>
                 <th>レコード数</th>
-                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -589,12 +588,9 @@ app.get('/available-months', auth.requireAuth, async (req, res) => {
       
       for (const row of result.rows) {
         content += `
-          <tr>
+          <tr onclick="location.href='/summary?yearMonth=${row.year_month}'" style="cursor: pointer;">
             <td><strong>${row.year_month}</strong></td>
             <td class="amount">${row.record_count}件</td>
-            <td>
-              <button onclick="location.href='/summary?yearMonth=${row.year_month}'" class="btn-info" style="width: auto; padding: 8px 12px; margin: 0;">サマリー表示</button>
-            </td>
           </tr>
         `;
       }

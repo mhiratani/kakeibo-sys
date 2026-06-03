@@ -171,9 +171,9 @@ button, .btn-primary {
 }
 
 .summary-table {
-    width: 100%;
+    width: auto;
     border-collapse: collapse;
-    min-width: 600px; /* スクロール用最小幅 */
+    white-space: nowrap;
     background: white;
     border-radius: 12px;
     overflow: hidden;
