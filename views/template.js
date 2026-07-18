@@ -1,5 +1,9 @@
 // HTMLテンプレート生成関数（レスポンシブ対応）
-const getHTMLTemplate = (content, user = null) => {
+// options.scripts: ページ固有の追加スクリプトパスの配列
+const getHTMLTemplate = (content, user = null, options = {}) => {
+  const extraScripts = (options.scripts || [])
+    .map((src) => `<script src="${src}"></script>`)
+    .join('\n    ');
   const userNav = user ? `
     <div class="user-nav">
       <span class="user-info">👤 ${user.name}</span>
@@ -24,6 +28,8 @@ const getHTMLTemplate = (content, user = null) => {
         ${content}
     </div>
     <script src="/js/main.js"></script>
+    <script src="/js/record-dialog.js"></script>
+    ${extraScripts}
 </body>
 </html>
   `;
