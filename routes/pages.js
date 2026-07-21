@@ -307,7 +307,7 @@ router.get('/summary', auth.requireAuth, async (req, res) => {
                             <th>日付</th>
                             <th>金額</th>
                             <th>場所</th>
-                            <th>メモ</th>
+                            <th>買ったもの</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -327,7 +327,7 @@ router.get('/summary', auth.requireAuth, async (req, res) => {
               });
               categoryTable += `
                 <tr class="record-row" data-record="${escapeHtml(recordJson)}">
-                  <td>${new Date(detail.record_date).toLocaleDateString('ja-JP')}</td>
+                  <td class="nowrap-cell">${new Date(detail.record_date).toLocaleDateString('ja-JP')}</td>
                   <td class="amount">¥${parseInt(detail.amount).toLocaleString()}</td>
                   <td>${escapeHtml(detail.location)}</td>
                   <td>${escapeHtml(detail.memo)}</td>

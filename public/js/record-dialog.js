@@ -64,16 +64,16 @@
             <button type="button" id="rdCategory" class="select-btn placeholder" data-value="">タップして選択</button>
           </div>
           <div class="form-group">
-            <label for="rdAmount">金額</label>
-            <input id="rdAmount" inputmode="numeric" pattern="[0-9]*" placeholder="0" autocomplete="off" enterkeyhint="next">
-          </div>
-          <div class="form-group">
             <label for="rdLocation">場所</label>
             <input id="rdLocation" maxlength="200" autocomplete="off" enterkeyhint="next">
           </div>
           <div class="form-group">
-            <label for="rdMemo">メモ</label>
-            <input id="rdMemo" maxlength="500" autocomplete="off" enterkeyhint="done">
+            <label for="rdMemo">買ったもの</label>
+            <input id="rdMemo" maxlength="500" autocomplete="off" enterkeyhint="next">
+          </div>
+          <div class="form-group">
+            <label for="rdAmount">金額</label>
+            <input id="rdAmount" inputmode="numeric" pattern="[0-9]*" placeholder="0" autocomplete="off" enterkeyhint="done">
           </div>
           <div class="btn-container dialog-btns">
             <button type="submit" id="rdSave" class="btn-primary">登録する</button>
@@ -246,13 +246,13 @@
         return;
       }
 
-      // 連続登録: 人・カテゴリ・日付は保持して金額/場所/メモだけクリア
+      // 連続登録: 人・カテゴリ・日付は保持して場所/メモ/金額だけクリア
       registeredCount++;
       toast(`登録しました: ${payload.person} / ${payload.category} ¥${payload.amount.toLocaleString()}`);
       $('rdAmount').value = '';
       $('rdLocation').value = '';
       $('rdMemo').value = '';
-      $('rdAmount').focus();
+      $('rdLocation').focus();
     } catch (error) {
       toast('通信エラーが発生しました', true);
     } finally {
@@ -276,14 +276,14 @@
       if (this.value !== cleaned) this.value = cleaned;
     });
 
-    // Enter（決定）で次のフォームへ移動、メモでは即保存
-    $('rdAmount').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); $('rdLocation').focus(); }
-    });
+    // Enter（決定）で次のフォームへ移動、金額では即保存
     $('rdLocation').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); $('rdMemo').focus(); }
     });
     $('rdMemo').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); $('rdAmount').focus(); }
+    });
+    $('rdAmount').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); save(); }
     });
 

@@ -217,6 +217,7 @@ button, .btn-primary {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum';
+    white-space: nowrap;
 }
 
 .positive {
@@ -337,6 +338,13 @@ button, .btn-primary {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* カテゴリ・人・金額・日付など短い内容の列は、文字単位で改行されると読みにくいため折り返さない */
+.detail-table .nowrap-cell {
+    white-space: nowrap;
 }
 
 /* ボタンコンテナ */
@@ -465,6 +473,16 @@ button, .btn-primary {
 
 /* モバイル用特別対応 */
 @media (max-width: 767px) {
+    /* 背景→カード→カードの入れ子で余白が重なるため、サイドの余白を圧縮 */
+    body {
+        padding: 6px 4px;
+    }
+
+    .container {
+        padding: 10px 6px;
+        border-radius: 14px;
+    }
+
     /* 小さな画面ではテーブルをカード形式で表示 */
     .mobile-card {
         display: block;

@@ -248,7 +248,7 @@
 
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
-    ['カテゴリ', '人', '金額', '場所', 'メモ'].forEach((label) => {
+    ['カテゴリ', '人', '金額', '場所', '買ったもの'].forEach((label) => {
       const th = document.createElement('th');
       th.textContent = label;
       headRow.appendChild(th);
@@ -263,12 +263,14 @@
       tr.dataset.record = JSON.stringify(r); // タップで record-dialog の編集/削除が開く
 
       const catCell = document.createElement('td');
+      catCell.className = 'nowrap-cell';
       const chip = document.createElement('span');
       chip.className = 'legend-chip';
       chip.style.background = colorVar(slotOf(r.category));
       catCell.append(chip, document.createTextNode(' ' + r.category));
 
       const personCell = document.createElement('td');
+      personCell.className = 'nowrap-cell';
       personCell.textContent = r.person;
 
       const amountCell = document.createElement('td');
