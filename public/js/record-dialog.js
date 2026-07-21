@@ -135,12 +135,12 @@
         list.appendChild(p);
       }
 
-      let settled = false;
-      const finish = (value) => {
-        if (settled) return;
-        settled = true;
-        resolve(value);
-      };
+      // 選択値を保持し、close イベント発火時に一度だけ解決する。
+      // 人・カテゴリのピッカーは同じ dialog 要素を使い回すため、click 時点で
+      // 解決すると、直前のピッカーの close イベント（非同期発火）が次のピッカーの
+      // リスナーにも届き、選択前に null で解決されてしまう。close で解決すれば
+      // 次のピッカーを開く時には前回の close は消化・リスナー除去済みとなる。
+      let chosen = null;
 
       names.forEach((name) => {
         const b = document.createElement('button');
@@ -148,14 +148,14 @@
         b.className = 'picker-item';
         b.textContent = name;
         b.addEventListener('click', () => {
-          finish(name);
+          chosen = name;
           dlg.close();
         });
         list.appendChild(b);
       });
 
-      dlg.addEventListener('close', () => finish(null), { once: true });
-      $('pickerCancel').onclick = () => dlg.close();
+      dlg.addEventListener('close', () => resolve(chosen), { once: true });
+      $('pickerCancel').onclick = () => { chosen = null; dlg.close(); };
       dlg.showModal();
     });
   }
